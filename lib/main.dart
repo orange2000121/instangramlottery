@@ -31,12 +31,11 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  bool visable = false;
   final urlformkey = GlobalKey<FormState>();
   final _drawerKey = GlobalKey<ScaffoldState>();
   final settingkey = GlobalKey<FormState>();
   late SharedPreferences preferences;
-  bool isexcludeMe = true, iscanRepeatComment = true, islimitComment = false;
+  bool isexcludeMe = true, iscanRepeatComment = true;
   Map setting = {'url': '', 'markPeopleCount': 0, 'peopleCount': 0, 'canRepeatComment': true, 'excludeMe': true, 'limitComment': '', 'limitTime': 0};
   @override
   void initState() {
@@ -321,9 +320,8 @@ class _HomePageState extends State<HomePage> {
                             Response response;
                             var dio = Dio();
                             String url = 'https://iglottery.r-dap.com/api/lottery';
-
                             var data = setting;
-                            print(setting['limitComment']);
+                            print('setting:$setting');
                             if (setting['limitComment'].isEmpty) {
                               data['limitComment'] = false;
                             }
