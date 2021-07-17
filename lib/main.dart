@@ -2,15 +2,16 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:dio/dio.dart';
+import 'package:instangramlotteryios/switch.dart';
+import 'package:event_bus/event_bus.dart';
 
+final ValueNotifier<bool> showtimeselect = ValueNotifier<bool>(false);
 void main() async {
   // SharedPreferences preferences = await SharedPreferences.getInstance();
   runApp(MyApp());
 }
 
 class MyApp extends StatelessWidget {
-  // final preferences;
-  // MyApp(this.preferences);
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -24,8 +25,6 @@ class MyApp extends StatelessWidget {
 }
 
 class HomePage extends StatefulWidget {
-  // final SharedPreferences preferences;
-  // HomePage(this.preferences);
   @override
   _HomePageState createState() => _HomePageState();
 }
@@ -33,8 +32,11 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   final urlformkey = GlobalKey<FormState>();
   final _drawerKey = GlobalKey<ScaffoldState>();
-  final settingkey = GlobalKey<FormState>();
+  final peopleCountController = TextEditingController();
+  final markPeopleCountController = TextEditingController();
+  final limitCommentController = TextEditingController();
   late SharedPreferences preferences;
+  final ValueNotifier<bool> onsearch = ValueNotifier<bool>(false);
   bool isexcludeMe = true, iscanRepeatComment = true;
   var response = null;
   Map setting = {'url': '', 'markPeopleCount': 0, 'peopleCount': 0, 'canRepeatComment': true, 'excludeMe': true, 'limitComment': '', 'limitTime': 0};
@@ -46,11 +48,11 @@ class _HomePageState extends State<HomePage> {
 
   void getpreferencesetting() async {
     preferences = await SharedPreferences.getInstance();
-    setting['markPeopleCount'] = preferences.getInt('markPeopleCount') == null ? 0 : preferences.getInt('markPeopleCount');
-    setting['peopleCount'] = preferences.getInt('peopleCount') == null ? 0 : preferences.getInt('peopleCount');
+    markPeopleCountController.text = preferences.getInt('markPeopleCount') == null ? '0' : preferences.getInt('markPeopleCount').toString();
+    peopleCountController.text = preferences.getInt('peopleCount') == null ? '0' : preferences.getInt('peopleCount').toString();
     setting['excludeMe'] = preferences.getBool('excludeMe') == null ? true : preferences.getBool('excludeMe');
     setting['canRepeatComment'] = preferences.getBool('canRepeatComment') == null ? true : preferences.getBool('canRepeatComment');
-    setting['limitComment'] = preferences.getString('limitComment') == null ? '' : preferences.getString('limitComment');
+    limitCommentController.text = (preferences.getString('limitComment') == null ? '' : preferences.getString('limitComment'))!;
     setting['limitTime'] = preferences.getInt('limitTime') == null ? 0 : preferences.getInt('limitTime');
     setState(() {});
   }
@@ -78,18 +80,22 @@ class _HomePageState extends State<HomePage> {
                   SizedBox(
                     width: 75,
                     height: 35,
-                    child: TextFormField(
-                      initialValue: String.fromCharCode(setting['markPeopleCount']),
-                      onChanged: (num) {
-                        print(num);
-                        setting['markPeopleCount'] = int.parse(num);
-                        preferences.setInt('markPeopleCount', int.parse(num));
-                        print(setting['markPeopleCount']);
-                      },
-                      key: settingkey,
-                      keyboardType: TextInputType.number,
-                      decoration: InputDecoration(
-                        border: OutlineInputBorder(),
+                    child: Form(
+                      // key: markPeopleCountkey,
+                      child: TextFormField(
+                        controller: markPeopleCountController,
+                        // initialValue: String.fromCharCode(setting['markPeopleCount']),
+                        // onChanged: (num) {},
+                        onSaved: (num) {
+                          print(num);
+                          setting['markPeopleCount'] = double.parse(num!);
+                          print(setting['markPeopleCount'].toString());
+                          preferences.setInt('markPeopleCount', int.parse(num));
+                        },
+                        keyboardType: TextInputType.number,
+                        decoration: InputDecoration(
+                          border: OutlineInputBorder(),
+                        ),
                       ),
                     ),
                   ),
@@ -111,11 +117,16 @@ class _HomePageState extends State<HomePage> {
                     width: 75,
                     height: 35,
                     child: TextFormField(
-                      initialValue: String.fromCharCode(setting['peopleCount']),
+                      controller: peopleCountController,
+                      // key: peopleCountkey,
+                      // initialValue: String.fromCharCode(setting['peopleCount']),
                       onChanged: (num) {
                         print(num);
                         setting['peopleCount'] = int.parse(num);
-                        preferences.setInt('peopleCount', int.parse(num));
+                      },
+                      onSaved: (num) {
+                        preferences.setInt('peopleCount', int.parse(num!));
+                        print(num);
                       },
                       keyboardType: TextInputType.number,
                       decoration: InputDecoration(
@@ -228,10 +239,15 @@ class _HomePageState extends State<HomePage> {
                   SizedBox(
                     height: 35,
                     child: TextFormField(
-                      initialValue: setting['limitComment'],
+                      // key: limitCommentkey,
+                      controller: limitCommentController,
+                      // initialValue: setting['limitComment'],
                       onChanged: (text) {
                         setting['limitComment'] = text;
-                        preferences.setString('limitComment', text);
+                        print('text : $text');
+                      },
+                      onSaved: (text) {
+                        preferences.setString('limitComment', text!);
                         print('text : $text');
                       },
                       keyboardType: TextInputType.text,
@@ -248,24 +264,38 @@ class _HomePageState extends State<HomePage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('限定時間', style: TextStyle(fontSize: 30)),
                     Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        TextButton(
-                          child: Text(
-                            setting['limitTime'] == false || setting['limitTime'] == null ? '${DateTime.now()}' : '${DateTime.fromMillisecondsSinceEpoch(setting['limitTime'])}',
-                            // style: TextStyle(fontSize: 30),
-                          ),
-                          onPressed: () async {
-                            var date = await showDatePicker(context: context, initialDate: DateTime.now(), firstDate: DateTime.now(), lastDate: DateTime(DateTime.now().year + 10));
-                            var time = await showTimePicker(context: context, initialTime: TimeOfDay.now());
-                            var reasult = DateTime(date!.year, date.month, date.day, time!.hour, time.minute);
-                            print(reasult.toUtc().millisecondsSinceEpoch);
-                            setting['limitTime'] = reasult.toUtc().millisecondsSinceEpoch;
-                            setState(() {});
-                          },
-                        )
+                        Text('限定時間', style: TextStyle(fontSize: 30)),
+                        Switchbutton(),
                       ],
+                    ),
+                    ValueListenableBuilder(
+                      valueListenable: showtimeselect,
+                      builder: (BuildContext context, bool value, Widget? child) {
+                        print(value);
+                        return value
+                            ? Row(
+                                children: [
+                                  TextButton(
+                                    child: Text(
+                                      setting['limitTime'] == false || setting['limitTime'] == null ? '${DateTime.now()}' : '${DateTime.fromMillisecondsSinceEpoch(setting['limitTime'])}',
+                                      // style: TextStyle(fontSize: 30),
+                                    ),
+                                    onPressed: () async {
+                                      var date = await showDatePicker(context: context, initialDate: DateTime.now(), firstDate: DateTime(DateTime.now().year - 3), lastDate: DateTime.now());
+                                      var time = await showTimePicker(context: context, initialTime: TimeOfDay.now());
+                                      var reasult = DateTime(date!.year, date.month, date.day, time!.hour, time.minute);
+                                      print(reasult.toUtc().millisecondsSinceEpoch);
+                                      setting['limitTime'] = reasult.toUtc().millisecondsSinceEpoch;
+                                      setState(() {});
+                                    },
+                                  )
+                                ],
+                              )
+                            : SizedBox();
+                      },
                     ),
                   ],
                 )),
@@ -312,39 +342,99 @@ class _HomePageState extends State<HomePage> {
                       }
                       return null;
                     },
+                    textInputAction: TextInputAction.go,
+                    onFieldSubmitted: (url) async {
+                      onsearch.value = true;
+                      print('peopleCountController:${peopleCountController.text}');
+                      if (peopleCountController.text == '') {
+                        peopleCountController.text = '0';
+                      }
+                      if (markPeopleCountController.text == '') {
+                        markPeopleCountController.text = '0';
+                      }
+                      setting['peopleCount'] = int.parse(peopleCountController.text);
+                      setting['markPeopleCount'] = int.parse(markPeopleCountController.text);
+                      setting['limitComment'] = limitCommentController.text;
+                      preferences.setInt('peopleCount', int.parse(peopleCountController.text));
+                      preferences.setInt('markPeopleCount', int.parse(markPeopleCountController.text));
+                      preferences.setString('limitComment', limitCommentController.text);
+                      var dio = Dio();
+                      String url = 'https://iglottery.r-dap.com/api/lottery';
+
+                      Map data = {};
+                      //data = setting
+                      for (var datakey in setting.keys) {
+                        data[datakey] = setting[datakey];
+                      }
+                      //檢查留言限制
+                      if (setting['limitComment'].isEmpty) {
+                        data['limitComment'] = false;
+                      }
+                      //檢查時間
+                      if (showtimeselect.value == false) {
+                        data['limitTime'] = false;
+                      }
+
+                      print(setting);
+                      for (var i in data.keys) {
+                        print('$i:${data[i]}/${data[i].runtimeType}');
+                      }
+                      response = await dio.post(url, data: data);
+                      print(response.data.toString());
+                      onsearch.value = false;
+                      setState(() {});
+                    },
                     decoration: InputDecoration(
                       labelText: '網址',
                       border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(8))),
                       filled: true,
                       fillColor: Colors.white,
-                      suffixIcon: IconButton(
-                          onPressed: () async {
-                            var dio = Dio();
-                            String url = 'https://iglottery.r-dap.com/api/lottery';
+                      // suffixIcon: IconButton(
+                      //     onPressed: () async {
+                      //       onsearch.value = true;
+                      //       print('peopleCountController:${peopleCountController.text}');
+                      //       if (peopleCountController.text == '') {
+                      //         peopleCountController.text = '0';
+                      //       }
+                      //       if (markPeopleCountController.text == '') {
+                      //         markPeopleCountController.text = '0';
+                      //       }
+                      //       setting['peopleCount'] = int.parse(peopleCountController.text);
+                      //       setting['markPeopleCount'] = int.parse(markPeopleCountController.text);
+                      //       setting['limitComment'] = limitCommentController.text;
+                      //       preferences.setInt('peopleCount', int.parse(peopleCountController.text));
+                      //       preferences.setInt('markPeopleCount', int.parse(markPeopleCountController.text));
+                      //       preferences.setString('limitComment', limitCommentController.text);
+                      //       var dio = Dio();
+                      //       String url = 'https://iglottery.r-dap.com/api/lottery';
 
-                            Map data = {};
-                            for (var datakey in setting.keys) {
-                              data[datakey] = setting[datakey];
-                            }
-                            // print('setting:$setting');
-                            if (setting['limitComment'].isEmpty) {
-                              data['limitComment'] = false;
-                            }
+                      //       Map data = {};
+                      //       //data = setting
+                      //       for (var datakey in setting.keys) {
+                      //         data[datakey] = setting[datakey];
+                      //       }
+                      //       //檢查留言限制
+                      //       if (setting['limitComment'].isEmpty) {
+                      //         data['limitComment'] = false;
+                      //       }
+                      //       //檢查時間
+                      //       if (showtimeselect.value == false) {
+                      //         data['limitTime'] = false;
+                      //       }
 
-                            data['limitTime'] = false;
-                            print(setting);
-                            for (var i in data.keys) {
-                              print('$i:${data[i]}/${data[i].runtimeType}');
-                            }
-                            response = await dio.post(url, data: data);
-                            print(response.data.toString());
-                            setState(() {});
-                            // data['limitComment'] = '';
-                          },
-                          icon: Icon(
-                            Icons.arrow_right_alt_rounded,
-                            size: 30,
-                          )),
+                      //       print(setting);
+                      //       for (var i in data.keys) {
+                      //         print('$i:${data[i]}/${data[i].runtimeType}');
+                      //       }
+                      //       response = await dio.post(url, data: data);
+                      //       print(response.data.toString());
+                      //       onsearch.value = false;
+                      //       setState(() {});
+                      //     },
+                      //     icon: Icon(
+                      //       Icons.arrow_right_alt_rounded,
+                      //       size: 30,
+                      //     )),
                     ),
                     onChanged: (url) {
                       setting['url'] = url;
@@ -354,66 +444,73 @@ class _HomePageState extends State<HomePage> {
               ],
             ),
           ),
-          Container(
-            height: _h * 0.75,
-            child: GridView.builder(
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-              ),
-              itemCount: response == null ? 0 : response.data['lottery_result'].length,
-              itemBuilder: (BuildContext context, int index) {
-                return Container(
-                  margin: EdgeInsets.all(15),
-                  decoration: BoxDecoration(
-                    color: Color(0xFFE2E2F1),
-                    borderRadius: BorderRadius.all(Radius.circular(15)),
-                    boxShadow: [BoxShadow(color: Colors.black)],
-                  ),
-                  width: _w * 0.3,
-                  height: _w * 0.3,
-                  alignment: Alignment.topLeft,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        margin: EdgeInsets.all(5),
-                        width: _w * 0.1,
-                        height: _w * 0.1,
-                        decoration: BoxDecoration(
-                          image: DecorationImage(
-                            image: NetworkImage(response.data['lottery_result'][index]['header']),
-                            fit: BoxFit.fill,
-                          ),
-                          shape: BoxShape.circle,
+          ValueListenableBuilder(
+            valueListenable: onsearch,
+            builder: (BuildContext context, bool value, Widget? child) {
+              return value
+                  ? CircularProgressIndicator()
+                  : Container(
+                      height: _h * 0.75,
+                      child: GridView.builder(
+                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
                         ),
+                        itemCount: response == null ? 0 : response.data['lottery_result'].length,
+                        itemBuilder: (BuildContext context, int index) {
+                          return Container(
+                            margin: EdgeInsets.all(15),
+                            decoration: BoxDecoration(
+                              color: Color(0xFFE2E2F1),
+                              borderRadius: BorderRadius.all(Radius.circular(15)),
+                              boxShadow: [BoxShadow(color: Colors.black)],
+                            ),
+                            width: _w * 0.3,
+                            height: _w * 0.3,
+                            alignment: Alignment.topLeft,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Container(
+                                  margin: EdgeInsets.all(5),
+                                  width: _w * 0.1,
+                                  height: _w * 0.1,
+                                  decoration: BoxDecoration(
+                                    image: DecorationImage(
+                                      image: NetworkImage(response.data['lottery_result'][index]['header']),
+                                      fit: BoxFit.fill,
+                                    ),
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                                // Image.network(response.data['lottery_result'][index]['header']),
+                                Text('name:'),
+                                Container(
+                                  // alignment: Alignment.topLeft,
+                                  width: _w * 0.45,
+                                  height: _w * 0.09,
+                                  child: Text(
+                                    response.data['lottery_result'][index]['userName'],
+                                    softWrap: true,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                Text('content:'),
+                                Container(
+                                  width: _w * 0.45,
+                                  height: _w * 0.09,
+                                  child: Text(
+                                    response.data['lottery_result'][index]['content'],
+                                    softWrap: true,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
                       ),
-                      // Image.network(response.data['lottery_result'][index]['header']),
-                      Text('name:'),
-                      Container(
-                        // alignment: Alignment.topLeft,
-                        width: _w * 0.45,
-                        height: _w * 0.09,
-                        child: Text(
-                          response.data['lottery_result'][index]['userName'],
-                          softWrap: true,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      Text('content:'),
-                      Container(
-                        width: _w * 0.45,
-                        height: _w * 0.09,
-                        child: Text(
-                          response.data['lottery_result'][index]['content'],
-                          softWrap: true,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
+                    );
+            },
           ),
         ],
       ),
