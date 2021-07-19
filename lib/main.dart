@@ -1,9 +1,9 @@
+import 'package:instangramlotteryios/contentpage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:dio/dio.dart';
 import 'package:instangramlotteryios/switch.dart';
-import 'package:event_bus/event_bus.dart';
 
 final ValueNotifier<bool> showtimeselect = ValueNotifier<bool>(false);
 void main() async {
@@ -38,6 +38,7 @@ class _HomePageState extends State<HomePage> {
   late SharedPreferences preferences;
   final ValueNotifier<bool> onsearch = ValueNotifier<bool>(false);
   bool isexcludeMe = true, iscanRepeatComment = true;
+  // ignore: avoid_init_to_null
   var response = null;
   Map setting = {'url': '', 'markPeopleCount': 0, 'peopleCount': 0, 'canRepeatComment': true, 'excludeMe': true, 'limitComment': '', 'limitTime': 0};
   @override
@@ -457,54 +458,61 @@ class _HomePageState extends State<HomePage> {
                         ),
                         itemCount: response == null ? 0 : response.data['lottery_result'].length,
                         itemBuilder: (BuildContext context, int index) {
-                          return Container(
-                            margin: EdgeInsets.all(15),
-                            decoration: BoxDecoration(
-                              color: Color(0xFFE2E2F1),
-                              borderRadius: BorderRadius.all(Radius.circular(15)),
-                              boxShadow: [BoxShadow(color: Colors.black)],
-                            ),
-                            width: _w * 0.3,
-                            height: _w * 0.3,
-                            alignment: Alignment.topLeft,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Container(
-                                  margin: EdgeInsets.all(5),
-                                  width: _w * 0.1,
-                                  height: _w * 0.1,
-                                  decoration: BoxDecoration(
-                                    image: DecorationImage(
-                                      image: NetworkImage(response.data['lottery_result'][index]['header']),
-                                      fit: BoxFit.fill,
+                          String url = response.data['lottery_result'][index]['header'];
+                          String name = response.data['lottery_result'][index]['userName'];
+                          String content = response.data['lottery_result'][index]['content'];
+                          return InkWell(
+                            onTap: () {
+                              Navigator.push(context, MaterialPageRoute(builder: (context) => ContentPage(url, content, name)));
+                            },
+                            child: Container(
+                              margin: EdgeInsets.all(15),
+                              decoration: BoxDecoration(
+                                color: Color(0xFFE2E2F1),
+                                borderRadius: BorderRadius.all(Radius.circular(15)),
+                                boxShadow: [BoxShadow(color: Colors.black)],
+                              ),
+                              width: _w * 0.3,
+                              height: _w * 0.3,
+                              alignment: Alignment.topLeft,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Container(
+                                    margin: EdgeInsets.all(5),
+                                    width: _w * 0.1,
+                                    height: _w * 0.1,
+                                    decoration: BoxDecoration(
+                                      image: DecorationImage(
+                                        image: NetworkImage(url),
+                                        fit: BoxFit.fill,
+                                      ),
+                                      shape: BoxShape.circle,
                                     ),
-                                    shape: BoxShape.circle,
                                   ),
-                                ),
-                                // Image.network(response.data['lottery_result'][index]['header']),
-                                Text('name:'),
-                                Container(
-                                  // alignment: Alignment.topLeft,
-                                  width: _w * 0.45,
-                                  height: _w * 0.09,
-                                  child: Text(
-                                    response.data['lottery_result'][index]['userName'],
-                                    softWrap: true,
-                                    overflow: TextOverflow.ellipsis,
+                                  Text('name:'),
+                                  Container(
+                                    // alignment: Alignment.topLeft,
+                                    width: _w * 0.45,
+                                    height: _w * 0.09,
+                                    child: Text(
+                                      name,
+                                      softWrap: true,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
                                   ),
-                                ),
-                                Text('content:'),
-                                Container(
-                                  width: _w * 0.45,
-                                  height: _w * 0.09,
-                                  child: Text(
-                                    response.data['lottery_result'][index]['content'],
-                                    softWrap: true,
-                                    overflow: TextOverflow.ellipsis,
+                                  Text('content:'),
+                                  Container(
+                                    width: _w * 0.45,
+                                    height: _w * 0.09,
+                                    child: Text(
+                                      content,
+                                      softWrap: true,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                           );
                         },
